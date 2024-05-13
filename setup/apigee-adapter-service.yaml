@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apigee-adapter
+  namespace: apigee
+  labels:
+    app: apigee-adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apigee-adapter
+  template:
+    metadata:
+      labels:
+        app: apigee-adapter
+        version: v1
+        org: cabral-apigee
+        env: dev
+    spec:
+      serviceAccountName: preview-ksa
+      securityContext:
+        runAsUser: 999
+        runAsGroup: 999
+        runAsNonRoot: true
+      containers:
+        - name: apigee-adapter
+          image: 'us-docker.pkg.dev/apigee-release/apigee-k8s-tooling/re-ext-proc-apigeeadapter:0.2'
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8443
+              name: server
+              protocol: TCP
+            - containerPort: 8080
+              name: health-check
+              protocol: TCP
+          args:
+            - --config=/config/config.yaml
+          resources:
+            limits:
+              cpu: 100m
+              memory: 100Mi
+            requests:
+              cpu: 10m
+              memory: 100Mi
+          volumeMounts:
+            - mountPath: /config
+              name: apigee-adapter
+              readOnly: true
+            - mountPath: /policy-secret
+              name: policy-secret
+              readOnly: true
+      volumes:
+        - name: apigee-adapter
+          configMap:
+            name: apigee-remote-service-envoy
+        - name: policy-secret
+          secret:
+            secretName: cabral-apigee-dev-policy-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apigee-adapter-service
+  namespace: apigee
+spec:
+  ports:
+    - appProtocol: HTTP2
+      name: health
+      port: 80
+      protocol: TCP
+      targetPort: 8080
+    - appProtocol: HTTP2
+      name: grpc
+      port: 443
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    app: apigee-adapter
+  type: ClusterIP

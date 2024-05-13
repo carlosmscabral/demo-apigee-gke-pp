@@ -1,0 +1,59 @@
+apiVersion: apim.googleapis.com/v1alpha1
+kind: APIMExtensionPolicy
+metadata:
+  name: apim-extension
+spec:
+  location: southamerica-east1 # The location of the internal-http AND apigee-adapter-gateway. For regional load balancers, this is the cluster location. For global load balancers this is global.
+  failOpen: false
+  timeout: 100ms
+  extensionServerRef: # depends on Gateway that routes to the apigee adapter service
+    name: apigee-adapter-gateway
+    kind: Gateway
+    namespace: apigee
+  targetRef: # See https://gateway-api.sigs.k8s.io/geps/gep-713
+    name: internal-http
+    kind: Gateway
+    namespace: default
+---
+apiVersion: apim.googleapis.com/v1alpha1
+kind: APIProduct
+metadata:
+  name: store-product
+  annotations:
+    apigee.googleapis.com/environment: '{organization: "cabral-apigee", environments:["dev"]}' # Must match the organization & environments used when configuring the apigee-adapter service
+spec:
+  approvalType: auto
+  description: store-product provides management of my store API.
+  displayName: Store
+  analytics:
+    enabled: true
+  enforcementRefs:
+    - name: apim-extension
+      kind: APIMExtensionPolicy
+      group: apim.googleapis.com
+  attributes:
+    - name: access
+      value: public
+---
+apiVersion: apim.googleapis.com/v1alpha1
+kind: APIOperationSet
+metadata:
+  name: item-set
+spec:
+  apiProductRefs:
+    - name: store-product
+      kind: APIProduct
+      group: apim.googleapis.com
+  quota:
+    limit: 5
+    interval: 1
+    timeUnit: hour
+  restOperations:
+    - name: ListItems
+      path: '/items'
+      methods:
+        - GET
+    - name: GetItem
+      path: '/items/*'
+      methods:
+        - GET

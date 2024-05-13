@@ -1,0 +1,47 @@
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: apigee-adapter-gateway
+  namespace: apigee
+spec:
+  gatewayClassName: gke-l7-rilb
+  listeners:
+    - name: http
+      port: 80
+      protocol: HTTP
+---
+apiVersion: networking.gke.io/v1
+kind: GCPGatewayPolicy
+metadata:
+  name: gateway-policy
+  namespace: apigee
+spec:
+  default:
+    allowGlobalAccess: true
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: apigee-adapter-gateway
+---
+apiVersion: networking.gke.io/v1
+kind: HealthCheckPolicy
+metadata:
+  name: apigee-adapter-healthcheck
+  namespace: apigee
+spec:
+  default:
+    checkIntervalSec: 5
+    config:
+      httpHealthCheck:
+        port: 8080
+        portName: health-check
+      type: HTTP
+    healthyThreshold: 5
+    logConfig:
+      enabled: true
+    timeoutSec: 2
+    unhealthyThreshold: 2
+  targetRef:
+    group: ''
+    kind: Service
+    name: apigee-adapter-service
