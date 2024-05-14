@@ -47,7 +47,7 @@ spec:
   quota:
     limit: 5
     interval: 1
-    timeUnit: hour
+    timeUnit: minute
   restOperations:
     - name: ListItems
       path: '/items'
